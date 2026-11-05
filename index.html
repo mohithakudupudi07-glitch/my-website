@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Talky - AI Voice & Chat Companion</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%2300B4D8'><path d='M12 2a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z'/><path d='M19 10v1a7 7 0 0 1-14 0v-1M12 18v4M8 22h8'/></svg>">
+
+  <!-- Tailwind CSS CDN with custom config -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            navy: {
+              950: '#050c18',
+              900: '#081426',
+              850: '#0c1c36',
+              800: '#112546',
+              700: '#1a355f',
+              600: '#23477e'
+            },
+            sea: {
+              900: '#005f73',
+              800: '#0077b6',
+              700: '#0096c7',
+              600: '#00b4d8',
+              500: '#48cae4',
+              400: '#90e0ef',
+              300: '#ade8f4'
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- Marked for Markdown -->
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <!-- Highlight.js for Code Highlighting -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+
+  <!-- Custom Stylesheet -->
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="bg-navy-950 text-slate-100 flex flex-col h-screen overflow-hidden select-none">
+
+  <!-- Toast Notification Container -->
+  <div id="toast-container"></div>
+
+  <!-- Top App Navigation Bar -->
+  <header class="h-16 border-b border-navy-700 bg-navy-900/90 backdrop-blur-md px-3 sm:px-4 flex items-center justify-between z-30 shrink-0">
+    <div class="flex items-center gap-2 sm:gap-3">
+      <!-- Mobile Sidebar Toggle -->
+      <button id="toggle-sidebar-btn" class="p-2 rounded-lg hover:bg-navy-800 text-slate-300 hover:text-sea-400 md:hidden transition" title="Open Sidebar">
+        <i data-lucide="menu" class="w-5 h-5"></i>
+      </button>
+
+      <!-- Talky Brand Logo -->
+      <div class="flex items-center gap-2.5 cursor-pointer" id="brand-logo-btn">
+        <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-tr from-sea-800 via-sea-600 to-sea-400 flex items-center justify-center shadow-lg shadow-sea-700/30">
+          <i data-lucide="bot" class="w-5 h-5 sm:w-6 sm:h-6 text-navy-950 stroke-[2.5]"></i>
+        </div>
+        <div>
+          <div class="flex items-center gap-1.5">
+            <span class="font-extrabold text-lg sm:text-xl tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-white via-sea-300 to-sea-500">Talky</span>
+            <span class="w-2 h-2 rounded-full bg-sea-400 animate-pulse"></span>
+          </div>
+          <p class="text-[10px] text-slate-400 font-medium hidden sm:block">AI Voice & Chat Companion</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Header Actions -->
+    <div class="flex items-center gap-1.5 sm:gap-2">
+      <!-- Live Voice Call Button -->
+      <button id="open-voice-call-btn" class="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-gradient-to-r from-sea-700 to-sea-500 hover:from-sea-600 hover:to-sea-400 text-white shadow-md shadow-sea-800/40 transition hover:scale-105 active:scale-95" title="Start Live Hands-Free Voice Call">
+        <i data-lucide="phone-call" class="w-3.5 h-3.5 animate-pulse"></i>
+        <span>Call</span>
+      </button>
+
+      <!-- Prompts Library Button -->
+      <button id="open-prompts-modal-btn" class="flex items-center gap-1 px-2.5 py-1.5 rounded-xl hover:bg-navy-800 text-slate-300 hover:text-sea-300 transition border border-navy-700 text-xs font-medium" title="Prompt Library">
+        <i data-lucide="sparkles" class="w-3.5 h-3.5 text-amber-400"></i>
+        <span class="hidden md:inline">Prompts</span>
+      </button>
+
+      <!-- Response Style Mode Toggle (Crisp vs Detailed) -->
+      <button id="toggle-mode-btn" class="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-full text-xs font-semibold border border-sea-600/50 bg-sea-900/30 text-sea-300 hover:bg-sea-800/40 transition shadow-sm" title="Click to toggle between Short & Detailed response mode">
+        <i data-lucide="zap" id="mode-icon" class="w-3.5 h-3.5 text-amber-400"></i>
+        <span id="mode-label" class="hidden sm:inline">⚡ Short Mode</span>
+      </button>
+
+      <!-- Voice Auto-Read Toggle -->
+      <button id="toggle-auto-tts-btn" class="p-2 sm:px-2.5 sm:py-1.5 rounded-full text-xs font-medium border border-navy-700 hover:border-sea-700 bg-navy-850 text-slate-300 hover:text-sea-300 transition" title="Auto Read AI Responses aloud">
+        <i data-lucide="volume-2" id="tts-icon" class="w-4 h-4 text-sea-500"></i>
+      </button>
+
+      <!-- Export Conversation -->
+      <button id="export-chat-btn" class="p-2 rounded-xl hover:bg-navy-800 text-slate-300 hover:text-sea-300 transition border border-navy-700 hidden sm:flex" title="Export this chat">
+        <i data-lucide="download" class="w-4 h-4"></i>
+      </button>
+
+      <!-- Settings & API Key Button -->
+      <button id="open-api-modal-btn" class="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-full text-xs font-semibold border transition shadow-sm" style="border-color: #1a355f; background: #0c1c36;" title="Settings & API Key">
+        <span id="api-status-dot" class="w-2 h-2 rounded-full bg-emerald-400"></span>
+        <i data-lucide="sliders" class="w-3.5 h-3.5 text-sea-400"></i>
+      </button>
+
+      <!-- New Chat Button (Quick Access) -->
+      <button id="quick-new-chat-btn" class="p-2 sm:px-3 sm:py-1.5 rounded-xl bg-sea-700 hover:bg-sea-600 text-white font-medium text-xs flex items-center gap-1.5 shadow-md shadow-sea-800/30 transition" title="Start New Chat">
+        <i data-lucide="plus" class="w-4 h-4"></i>
+        <span class="hidden md:inline">New</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Persona Selection Bar -->
+  <div class="h-10 border-b border-navy-800/90 bg-navy-900/60 px-3 sm:px-6 flex items-center gap-2 overflow-x-auto no-scrollbar shrink-0 text-xs">
+    <span class="text-[10px] font-semibold text-slate-500 uppercase tracking-wider shrink-0 flex items-center gap-1 mr-1">
+      <i data-lucide="bot" class="w-3 h-3 text-sea-400"></i> Persona:
+    </span>
+    <button class="persona-pill active px-3 py-1 rounded-lg text-xs" data-persona="general">🤖 General</button>
+    <button class="persona-pill px-3 py-1 rounded-lg text-xs" data-persona="telugu">🌾 తెలుగు మిత్రుడు</button>
+    <button class="persona-pill px-3 py-1 rounded-lg text-xs" data-persona="coder">👨‍💻 Code Pro</button>
+    <button class="persona-pill px-3 py-1 rounded-lg text-xs" data-persona="tldr">⚡ 1-Line Bot</button>
+    <button class="persona-pill px-3 py-1 rounded-lg text-xs" data-persona="pro">💼 Professional</button>
+  </div>
+
+  <!-- Main Workspace Area -->
+  <div class="flex flex-1 overflow-hidden relative">
+
+    <!-- Mobile Sidebar Backdrop Overlay -->
+    <div id="sidebar-backdrop" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 hidden md:hidden sidebar-overlay opacity-0"></div>
+
+    <!-- Left Sidebar (Chat History & Options) -->
+    <aside id="sidebar-panel" class="sidebar-panel fixed md:relative z-40 md:z-0 top-0 md:top-0 bottom-0 left-0 w-72 sm:w-80 bg-navy-900 border-r border-navy-700 flex flex-col closed md:translate-x-0 transition-transform duration-300 ease-in-out">
+      
+      <!-- Sidebar Header / Actions -->
+      <div class="p-3 sm:p-4 border-b border-navy-700/80 flex flex-col gap-2.5">
+        <button id="sidebar-new-chat-btn" class="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-sea-800 to-sea-700 hover:from-sea-700 hover:to-sea-600 text-white font-semibold text-sm flex items-center justify-center gap-2 shadow-lg shadow-sea-900/40 transition">
+          <i data-lucide="message-square-plus" class="w-4 h-4"></i>
+          <span>New Conversation</span>
+        </button>
+
+        <!-- Search Chats Input -->
+        <div class="relative">
+          <input 
+            type="text" 
+            id="search-chats-input" 
+            placeholder="Search conversations..." 
+            class="w-full bg-navy-950 border border-navy-700 rounded-xl py-1.5 pl-8 pr-3 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-sea-500 transition"
+          >
+          <i data-lucide="search" class="w-3.5 h-3.5 text-slate-500 absolute left-2.5 top-2.5"></i>
+        </div>
+
+        <div class="flex items-center justify-between text-xs text-slate-400 px-1 mt-0.5">
+          <span class="font-medium tracking-wide uppercase text-[10px] text-slate-400">Conversations</span>
+          <button id="clear-all-chats-btn" class="hover:text-red-400 text-[11px] transition" title="Clear all chat history">
+            Clear All
+          </button>
+        </div>
+      </div>
+
+      <!-- Chats List -->
+      <div id="chats-list" class="flex-1 overflow-y-auto p-3 space-y-1">
+        <!-- Rendered dynamically via JavaScript -->
+      </div>
+
+      <!-- Sidebar Footer (Model & Quick Settings) -->
+      <div class="p-3 border-t border-navy-700/80 bg-navy-950/60">
+        <div class="flex items-center justify-between text-xs text-slate-400 mb-2">
+          <span>Active Engine:</span>
+          <span id="sidebar-active-model-badge" class="px-2 py-0.5 rounded-full bg-navy-800 text-sea-300 font-mono text-[11px] border border-navy-700">openrouter/auto</span>
+        </div>
+        <div class="flex items-center justify-between text-[11px] text-slate-500 pt-2 border-t border-navy-800">
+          <span>Talky AI v2.0 • Navy & Sea Blue</span>
+          <button id="sidebar-settings-link" class="text-sea-400 hover:underline">Settings</button>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Chat Area (Center / Main) -->
+    <main class="flex-1 flex flex-col h-full overflow-hidden bg-navy-950 relative">
+
+      <!-- Messages Scroll Container -->
+      <div id="messages-container" class="flex-1 overflow-y-auto px-4 py-6 md:px-8 space-y-6">
+
+        <!-- Welcome Banner (shown when conversation is empty) -->
+        <div id="welcome-screen" class="max-w-2xl mx-auto my-auto text-center py-6 px-4 flex flex-col items-center justify-center">
+          <!-- Animated Talky Orb -->
+          <div class="relative mb-5 cursor-pointer" id="welcome-orb-trigger" title="Click to call Talky">
+            <div class="w-20 h-20 sm:w-24 sm:h-24 rounded-3xl bg-gradient-to-tr from-navy-800 via-sea-800 to-sea-500 flex items-center justify-center shadow-2xl shadow-sea-600/30 border border-sea-500/30">
+              <i data-lucide="sparkles" class="w-10 h-10 sm:w-12 sm:h-12 text-sea-300"></i>
+            </div>
+            <div class="absolute -inset-2 bg-sea-500/20 rounded-3xl blur-xl -z-10 animate-pulse"></div>
+          </div>
+
+          <h1 class="text-3xl sm:text-4xl font-extrabold tracking-tight text-white mb-2">
+            Namaste! I'm <span class="text-transparent bg-clip-text bg-gradient-to-r from-sea-400 to-sea-200">Talky</span>
+          </h1>
+          <p class="text-slate-400 text-xs sm:text-sm max-w-md mx-auto mb-6">
+            Your AI voice & chat companion. Type, tap the mic, or click <span class="text-sea-300 font-semibold cursor-pointer" id="inline-call-link">"Call"</span> for hands-free talk!
+          </p>
+
+          <!-- Suggested Starters Grid -->
+          <div class="w-full max-w-xl text-left">
+            <p class="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2.5 text-center sm:text-left flex items-center justify-between">
+              <span>Quick prompts to try:</span>
+              <button id="view-all-prompts-btn" class="text-sea-400 hover:underline normal-case font-medium">View Library →</button>
+            </p>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              <button class="starter-card p-3 rounded-xl bg-navy-900 hover:bg-navy-800 border border-navy-700/80 hover:border-sea-700 text-left transition group">
+                <div class="flex items-center gap-2 text-sea-400 font-medium text-xs mb-1">
+                  <i data-lucide="message-circle" class="w-3.5 h-3.5"></i>
+                  <span>Telugu / Tenglish</span>
+                </div>
+                <p class="text-xs text-slate-300">"Naku Telugu lo oka manchi motivational thought cheppu"</p>
+              </button>
+
+              <button class="starter-card p-3 rounded-xl bg-navy-900 hover:bg-navy-800 border border-navy-700/80 hover:border-sea-700 text-left transition group">
+                <div class="flex items-center gap-2 text-sea-400 font-medium text-xs mb-1">
+                  <i data-lucide="mic" class="w-3.5 h-3.5"></i>
+                  <span>Voice Conversation</span>
+                </div>
+                <p class="text-xs text-slate-300">"Tap the microphone and start speaking to me directly"</p>
+              </button>
+
+              <button class="starter-card p-3 rounded-xl bg-navy-900 hover:bg-navy-800 border border-navy-700/80 hover:border-sea-700 text-left transition group">
+                <div class="flex items-center gap-2 text-sea-400 font-medium text-xs mb-1">
+                  <i data-lucide="code" class="w-3.5 h-3.5"></i>
+                  <span>Code Helper</span>
+                </div>
+                <p class="text-xs text-slate-300">"Write a Python script to fetch today's weather data"</p>
+              </button>
+
+              <button class="starter-card p-3 rounded-xl bg-navy-900 hover:bg-navy-800 border border-navy-700/80 hover:border-sea-700 text-left transition group">
+                <div class="flex items-center gap-2 text-sea-400 font-medium text-xs mb-1">
+                  <i data-lucide="zap" class="w-3.5 h-3.5"></i>
+                  <span>Direct & Crisp</span>
+                </div>
+                <p class="text-xs text-slate-300">"Explain Quantum Computing in 2 simple sentences"</p>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Chat Messages Container -->
+        <div id="messages-list" class="max-w-3xl mx-auto space-y-6 hidden">
+          <!-- Dynamically populated messages -->
+        </div>
+
+        <!-- Typing / Thinking Indicator -->
+        <div id="typing-indicator" class="max-w-3xl mx-auto hidden">
+          <div class="flex items-start gap-3">
+            <div class="w-8 h-8 rounded-xl bg-sea-800 flex items-center justify-center shrink-0 border border-sea-500/30">
+              <i data-lucide="bot" class="w-4 h-4 text-sea-200"></i>
+            </div>
+            <div class="chat-bubble-ai px-4 py-3 rounded-2xl flex items-center gap-2">
+              <span class="text-xs text-sea-300 font-medium mr-1">Talky is thinking</span>
+              <span class="w-2 h-2 rounded-full bg-sea-400 dot-1"></span>
+              <span class="w-2 h-2 rounded-full bg-sea-400 dot-2"></span>
+              <span class="w-2 h-2 rounded-full bg-sea-400 dot-3"></span>
+            </div>
+          </div>
+        </div>
+
+        <div id="scroll-anchor" class="h-1"></div>
+      </div>
+
+      <!-- Bottom Chat Input Bar -->
+      <footer class="p-2.5 sm:p-4 bg-navy-900/90 border-t border-navy-700 backdrop-blur-md shrink-0">
+        <div class="max-w-3xl mx-auto">
+
+          <!-- Image Preview Chip (if attached) -->
+          <div id="attachment-preview-container" class="hidden mb-2.5 flex items-center gap-2 bg-navy-800 border border-navy-700 p-2 rounded-xl w-fit">
+            <img id="attachment-preview-img" src="" alt="Attachment" class="w-10 h-10 object-cover rounded-lg border border-sea-600/40">
+            <div class="text-xs pr-2">
+              <p id="attachment-filename" class="text-slate-200 font-medium max-w-[150px] truncate">image.png</p>
+              <p class="text-slate-400 text-[10px]">Image attached</p>
+            </div>
+            <button id="remove-attachment-btn" class="p-1 text-slate-400 hover:text-red-400 transition" title="Remove attachment">
+              <i data-lucide="x" class="w-4 h-4"></i>
+            </button>
+          </div>
+
+          <!-- Active Speech Recognition Voice Banner -->
+          <div id="mic-live-banner" class="hidden mb-2 px-3.5 py-2 rounded-xl bg-sea-900/70 border border-sea-500/60 flex items-center justify-between text-xs text-sea-200 animate-pulse">
+            <div class="flex items-center gap-2">
+              <span class="w-2.5 h-2.5 rounded-full bg-sea-400 animate-ping"></span>
+              <span class="font-semibold" id="mic-status-label">Listening... Speak now!</span>
+            </div>
+            <button id="stop-listening-btn" class="text-xs bg-navy-950 px-2.5 py-1 rounded-lg text-sea-300 hover:text-white border border-sea-700">Done</button>
+          </div>
+
+          <!-- Input Controls Wrapper -->
+          <form id="chat-form" class="flex items-end gap-1.5 sm:gap-2 bg-navy-850 border border-navy-700 focus-within:border-sea-600 rounded-2xl p-1.5 sm:p-2 shadow-xl shadow-navy-950 transition">
+            
+            <!-- Hidden File Input for Image Upload -->
+            <input type="file" id="image-file-input" accept="image/*" class="hidden">
+
+            <!-- Attachment Button -->
+            <button type="button" id="attach-btn" class="p-2 sm:p-2.5 rounded-xl hover:bg-navy-800 text-slate-400 hover:text-sea-300 transition shrink-0" title="Attach Image">
+              <i data-lucide="paperclip" class="w-5 h-5"></i>
+            </button>
+
+            <!-- Language Voice Selector Pill -->
+            <div class="relative shrink-0 hidden sm:block">
+              <select id="voice-lang-select" class="appearance-none bg-navy-800 text-slate-300 text-[11px] font-medium py-1 px-2.5 pr-6 rounded-lg border border-navy-700 focus:outline-none focus:border-sea-500 cursor-pointer">
+                <option value="te-IN">Telugu (తెలుగు)</option>
+                <option value="en-IN" selected>English (India)</option>
+                <option value="en-US">English (US)</option>
+                <option value="hi-IN">Hindi (हिंदी)</option>
+              </select>
+              <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-1.5 text-slate-400">
+                <i data-lucide="globe" class="w-3 h-3"></i>
+              </div>
+            </div>
+
+            <!-- Auto-expanding Textarea Input -->
+            <textarea
+              id="message-input"
+              rows="1"
+              placeholder="Message Talky... (or tap the mic to speak)"
+              class="flex-1 bg-transparent border-0 text-white placeholder-slate-400 text-sm sm:text-base resize-none focus:outline-none max-h-36 py-2 px-1 leading-relaxed"
+            ></textarea>
+
+            <!-- Microphone Button (Speech to Text) -->
+            <button type="button" id="mic-btn" class="p-2 sm:p-2.5 rounded-xl bg-navy-800 hover:bg-navy-750 text-sea-400 hover:text-sea-300 border border-navy-700 hover:border-sea-600 transition shrink-0" title="Tap to Speak (Voice Input)">
+              <i data-lucide="mic" class="w-5 h-5"></i>
+            </button>
+
+            <!-- Send Message Button -->
+            <button type="submit" id="send-btn" class="p-2 sm:p-2.5 rounded-xl bg-sea-700 hover:bg-sea-600 text-white font-medium shadow-md shadow-sea-800/40 transition shrink-0 disabled:opacity-50 disabled:cursor-not-allowed" title="Send Message">
+              <i data-lucide="send" class="w-5 h-5"></i>
+            </button>
+          </form>
+
+          <p class="text-[10px] text-center text-slate-500 mt-2">
+            Talky AI • Navy & Sea Blue • Press Shift+Enter for newline
+          </p>
+        </div>
+      </footer>
+    </main>
+  </div>
+
+  <!-- Live Hands-Free Voice Call Screen Modal -->
+  <div id="voice-call-modal" class="fixed inset-0 modal-overlay z-50 flex items-center justify-center p-4 hidden">
+    <div class="w-full max-w-lg bg-navy-900 border border-sea-700/60 rounded-3xl shadow-2xl p-6 sm:p-8 flex flex-col items-center justify-between text-center relative min-h-[460px]">
+      
+      <!-- Call Header -->
+      <div class="w-full flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping"></span>
+          <span class="text-xs font-semibold text-slate-300 tracking-wide uppercase">Live Voice Call</span>
+        </div>
+        <button id="close-voice-call-x-btn" class="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-navy-800 transition">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <!-- Center 3D Pulsing Orb -->
+      <div class="my-6 flex flex-col items-center">
+        <div id="call-orb" class="voice-call-orb mb-6"></div>
+        <h3 id="call-status-heading" class="text-lg font-bold text-white mb-1">Talk to Talky</h3>
+        <p id="call-status-sub" class="text-xs text-sea-300 max-w-xs">Tap the green button to start speaking hands-free!</p>
+      </div>
+
+      <!-- Live Speech Transcript Bubble -->
+      <div id="call-transcript-box" class="w-full bg-navy-950/80 border border-navy-700 rounded-2xl p-3 text-xs text-slate-300 min-h-[60px] max-h-24 overflow-y-auto mb-6 flex items-center justify-center italic text-center">
+        "Say something in Telugu or English..."
+      </div>
+
+      <!-- Call Action Controls -->
+      <div class="flex items-center gap-6">
+        <!-- Mic Mute Toggle -->
+        <button id="call-mic-toggle-btn" class="w-12 h-12 rounded-full bg-navy-800 hover:bg-navy-700 border border-navy-700 flex items-center justify-center text-slate-300 hover:text-white transition" title="Toggle Mic">
+          <i data-lucide="mic" id="call-mic-icon" class="w-5 h-5"></i>
+        </button>
+
+        <!-- Big Start / End Call Button -->
+        <button id="call-main-action-btn" class="w-16 h-16 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white shadow-xl shadow-emerald-700/40 flex items-center justify-center transition hover:scale-105 active:scale-95" title="Start Call">
+          <i data-lucide="phone" id="call-main-icon" class="w-7 h-7"></i>
+        </button>
+
+        <!-- Speaker Mute Toggle -->
+        <button id="call-speaker-toggle-btn" class="w-12 h-12 rounded-full bg-navy-800 hover:bg-navy-700 border border-navy-700 flex items-center justify-center text-slate-300 hover:text-white transition" title="Toggle Speaker">
+          <i data-lucide="volume-2" id="call-speaker-icon" class="w-5 h-5"></i>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Prompt Templates Library Modal -->
+  <div id="prompts-modal" class="fixed inset-0 modal-overlay z-50 flex items-center justify-center p-4 hidden">
+    <div class="w-full max-w-2xl bg-navy-900 border border-navy-700 rounded-3xl shadow-2xl p-6 relative max-h-[85vh] flex flex-col">
+      <!-- Close Button -->
+      <button id="close-prompts-modal-btn" class="absolute top-5 right-5 p-2 text-slate-400 hover:text-white rounded-lg hover:bg-navy-800 transition">
+        <i data-lucide="x" class="w-5 h-5"></i>
+      </button>
+
+      <div class="flex items-center gap-3 mb-4">
+        <div class="w-10 h-10 rounded-xl bg-amber-500/20 border border-amber-500/30 flex items-center justify-center text-amber-400">
+          <i data-lucide="sparkles" class="w-5 h-5"></i>
+        </div>
+        <div>
+          <h2 class="text-lg font-bold text-white">Prompt Templates Library</h2>
+          <p class="text-xs text-slate-400">Click any prompt to instantly use it in Talky</p>
+        </div>
+      </div>
+
+      <!-- Category Filter Tabs -->
+      <div class="flex items-center gap-2 mb-4 overflow-x-auto no-scrollbar shrink-0 border-b border-navy-800 pb-2">
+        <button class="prompt-tab-btn active px-3 py-1 rounded-lg text-xs font-semibold bg-sea-800 text-white" data-category="all">All</button>
+        <button class="prompt-tab-btn px-3 py-1 rounded-lg text-xs font-semibold bg-navy-800 text-slate-400 hover:text-white" data-category="telugu">🌾 Telugu & Tenglish</button>
+        <button class="prompt-tab-btn px-3 py-1 rounded-lg text-xs font-semibold bg-navy-800 text-slate-400 hover:text-white" data-category="coding">👨‍💻 Coding & Tech</button>
+        <button class="prompt-tab-btn px-3 py-1 rounded-lg text-xs font-semibold bg-navy-800 text-slate-400 hover:text-white" data-category="work">💼 Work & Email</button>
+        <button class="prompt-tab-btn px-3 py-1 rounded-lg text-xs font-semibold bg-navy-800 text-slate-400 hover:text-white" data-category="quick">⚡ Quick & Crisp</button>
+      </div>
+
+      <!-- Prompts Grid List -->
+      <div id="prompts-grid" class="flex-1 overflow-y-auto space-y-2 pr-1">
+        <!-- Rendered dynamically via JS -->
+      </div>
+    </div>
+  </div>
+
+  <!-- API Key Setup & Settings Modal -->
+  <div id="api-modal" class="fixed inset-0 modal-overlay z-50 flex items-center justify-center p-4 hidden">
+    <div class="w-full max-w-md bg-navy-900 border border-navy-700 rounded-2xl shadow-2xl overflow-hidden p-6 relative">
+      <!-- Close Button -->
+      <button id="close-api-modal-btn" class="absolute top-4 right-4 p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-navy-800 transition">
+        <i data-lucide="x" class="w-5 h-5"></i>
+      </button>
+
+      <div class="flex items-center gap-3 mb-4">
+        <div class="w-10 h-10 rounded-xl bg-sea-800/60 border border-sea-500/40 flex items-center justify-center text-sea-300">
+          <i data-lucide="sliders" class="w-5 h-5"></i>
+        </div>
+        <div>
+          <h2 class="text-lg font-bold text-white">Talky Settings</h2>
+          <p class="text-xs text-slate-400">Configure AI model, speed, and API key</p>
+        </div>
+      </div>
+
+      <div class="space-y-4">
+        <!-- API Key Field -->
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1.5">
+            API Key (OpenRouter or Gemini)
+          </label>
+          <div class="relative">
+            <input 
+              type="password" 
+              id="api-key-input" 
+              placeholder="sk-or-v1-... or AIzaSy..." 
+              class="w-full bg-navy-950 border border-navy-700 focus:border-sea-500 rounded-xl py-2.5 pl-3.5 pr-10 text-sm text-white placeholder-slate-500 focus:outline-none transition font-mono"
+            >
+            <button type="button" id="toggle-key-visibility-btn" class="absolute right-3 top-2.5 text-slate-400 hover:text-slate-200">
+              <i data-lucide="eye" id="eye-icon" class="w-4 h-4"></i>
+            </button>
+          </div>
+          <p class="text-[11px] text-slate-400 mt-1 flex items-center justify-between">
+            <span>Supports OpenRouter (sk-or-v1...) & Google Gemini.</span>
+            <a href="https://openrouter.ai/keys" target="_blank" rel="noopener noreferrer" class="text-sea-400 hover:underline inline-flex items-center gap-0.5">
+              OpenRouter Keys <i data-lucide="external-link" class="w-3 h-3"></i>
+            </a>
+          </p>
+        </div>
+
+        <!-- Model Selection -->
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1.5">
+            Preferred AI Model
+          </label>
+          <select id="modal-model-select" class="w-full bg-navy-950 border border-navy-700 focus:border-sea-500 rounded-xl py-2.5 px-3.5 text-sm text-white focus:outline-none transition">
+            <option value="openrouter/auto" selected>Auto Model (Fastest Active Model - Recommended)</option>
+            <option value="openai/gpt-4o-mini">GPT-4o Mini (Ultra Fast & Concise)</option>
+            <option value="deepseek/deepseek-chat">DeepSeek V3 (Smart & Fast)</option>
+            <option value="meta-llama/llama-3.3-70b-instruct:free">Llama 3.3 70B (Free Tier)</option>
+          </select>
+        </div>
+
+        <!-- Speech Synthesis Rate / Speed -->
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1.5">
+            Voice Readout Speed
+          </label>
+          <select id="modal-voice-speed-select" class="w-full bg-navy-950 border border-navy-700 focus:border-sea-500 rounded-xl py-2 px-3 text-xs text-white focus:outline-none transition">
+            <option value="0.9">0.9x (Relaxed)</option>
+            <option value="1.0" selected>1.0x (Normal)</option>
+            <option value="1.15">1.15x (Fast & Crisp)</option>
+            <option value="1.3">1.3x (Super Fast)</option>
+          </select>
+        </div>
+
+        <!-- Sound Effects Toggle -->
+        <div class="flex items-center justify-between py-1">
+          <div>
+            <label class="text-xs font-semibold text-slate-300">Sci-Fi Sound Chimes</label>
+            <p class="text-[10px] text-slate-500">Audio feedback when message sends/receives</p>
+          </div>
+          <input type="checkbox" id="sound-effects-toggle" checked class="w-4 h-4 accent-sea-500 cursor-pointer">
+        </div>
+
+        <!-- Connection Test Feedback Alert -->
+        <div id="api-test-feedback" class="hidden p-3 rounded-xl text-xs flex items-center gap-2">
+          <i id="test-feedback-icon" data-lucide="info" class="w-4 h-4 shrink-0"></i>
+          <span id="test-feedback-text">Testing key...</span>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="flex items-center gap-2.5 pt-2">
+          <button type="button" id="test-api-key-btn" class="flex-1 py-2.5 px-4 rounded-xl border border-navy-700 hover:border-sea-600 bg-navy-850 hover:bg-navy-800 text-xs font-semibold text-slate-200 flex items-center justify-center gap-1.5 transition">
+            <i data-lucide="activity" class="w-3.5 h-3.5 text-sea-400"></i>
+            <span>Test Connection</span>
+          </button>
+          
+          <button type="button" id="save-api-key-btn" class="flex-1 py-2.5 px-4 rounded-xl bg-sea-700 hover:bg-sea-600 text-xs font-semibold text-white flex items-center justify-center gap-1.5 shadow-lg shadow-sea-800/30 transition">
+            <i data-lucide="check" class="w-3.5 h-3.5"></i>
+            <span>Save & Apply</span>
+          </button>
+        </div>
+
+        <!-- Remove Key Option -->
+        <div class="text-center pt-1">
+          <button type="button" id="remove-api-key-btn" class="text-[11px] text-red-400/80 hover:text-red-400 hover:underline">
+            Remove saved key
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Application Logic -->
+  <script src="app.js"></script>
+</body>
+</html>
